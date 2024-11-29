@@ -1,6 +1,7 @@
-width = 200; // Multiple of 100
-height = 200; // Multiple of 100
-size = 10;
+width = 600; // Multiple of 100
+height = 600; // Multiple of 100
+size = 20;
+time = 125;
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -51,12 +52,18 @@ class Snake {
     if (!appleCollision) this.body.pop();
   }
 
-  checkWalls(newHead) {
+  checkEndGame(newHead) {
     if (newHead.x >= width || newHead.x < 0) {
       return this.endGame();
     } else if (newHead.y >= height || newHead.y < 0) {
       return this.endGame();
     }
+    let bodyCollision = false;
+    this.body.map(
+      (part) =>
+        (bodyCollision = this.detectCollision(part, newHead) || bodyCollision)
+    );
+    if (bodyCollision) return this.endGame();
     return false;
   }
 
@@ -71,31 +78,33 @@ class Snake {
     return true;
   }
 
+  getNewHead() {
+    const { x, y } = this.body[0];
+    switch (this.direction) {
+      case 0:
+        return { x, y: y - size };
+      case 1:
+        return { x: x + size, y };
+      case 2:
+        return { x, y: y + size };
+      case 3:
+        return { x: x - size, y };
+      default:
+        return this.body[0];
+    }
+  }
+
   moveSnake() {
-    if (this.move) {
-      this.cleanRect();
-      const newHead = {
-        x:
-          this.body[0].x +
-          size * (this.direction === 1) +
-          -size * (this.direction === 3),
-        y:
-          this.body[0].y +
-          size * (this.direction === 2) +
-          -size * (this.direction === 0),
-      };
-      this.checkApple(newHead);
-      const endGame = this.checkWalls(newHead);
-      if (!endGame) {
-        this.body.unshift(newHead);
-        this.draw();
-        if (
-          this.body[0].x === this.apple.x &&
-          this.body[0].y === this.apple.y
-        ) {
-          this.eat();
-        }
-      }
+    if (!this.move) return;
+    this.cleanRect();
+    const newHead = this.getNewHead();
+    this.checkApple(newHead);
+    const endGame = this.checkEndGame(newHead);
+    if (endGame) return;
+    this.body.unshift(newHead);
+    this.draw();
+    if (this.body[0].x === this.apple.x && this.body[0].y === this.apple.y) {
+      this.eat();
     }
   }
 
@@ -104,17 +113,19 @@ class Snake {
       ctx.clearRect(this.apple.x, this.apple.y, size, size);
     }
     let newCoord = {
-      x: Math.floor((Math.random() / 10) * width) * 10,
-      y: Math.floor((Math.random() / 10) * height) * 10,
+      x: Math.floor((Math.random() / size) * width) * size,
+      y: Math.floor((Math.random() / size) * height) * size,
     };
     let found = false;
-    this.body.forEach((part) => (found = this.detectCollision(part, newCoord)));
-    if (!found) {
+    this.body.forEach(
+      (part) => (found = this.detectCollision(part, newCoord)) || found
+    );
+    if (found) {
+      this.generateApple();
+    } else {
       ctx.fillStyle = 'red';
       ctx.fillRect(newCoord.x, newCoord.y, size, size);
       this.apple = newCoord;
-    } else {
-      this.generateApple();
     }
   }
 }
@@ -133,4 +144,4 @@ document.addEventListener('keydown', function (event) {
     snake.changeDirection(0); // up
   }
 });
-setInterval(() => snake.moveSnake(), 125);
+setInterval(() => snake.moveSnake(), time);
